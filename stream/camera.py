@@ -1,49 +1,54 @@
 import cv2
-import io
 import socket
 import struct
-import time
 import pickle
-import zlib
 import numpy as np
 
-DEBUG = False
 
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.bind(('',8485))
-print('Socket bind complete')
-client_socket.listen(10)
-print('Socket now listening')
+class CameraServer:
+    def __init__(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.ENC_PARAM = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
+        self.conn = None
+        self.addr = None
 
-conn,addr=client_socket.accept()
+    def _start_serv(self):
+        self.socket.bind(('', 8485))
+        print('Socket bind complete')
+        self.socket.listen(10)
+        print('Socket now listening')
 
-cam = cv2.VideoCapture(0)
+    def _start_cam(self):
+        self.cam = cv2.VideoCapture(0)
 
-cam.set(3, 320);
-cam.set(4, 240);
+        self.cam.set(3, 320)
+        self.cam.set(4, 240)
 
-img_counter = 0
+    def wait_for_accept(self):
+        self.conn, self.addr = self.socket.accept()
 
-encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+    def start(self, wait=False):
+        self._start_cam()
+        self._start_serv()
 
-while True:
-    ret, frame = cam.read()
+        if wait: self.wait_for_accept()
 
-    lower = np.array([17, 15, 100], dtype="uint8")
-    upper = np.array([200, 200, 200], dtype="uint8")
-    mask = cv2.inRange(frame, lower, upper)
-    output = cv2.bitwise_and(frame, frame, mask=mask)
+    def frame(self):
+        ret, frame = self.cam.read()
 
-    frame = output
+        lower = np.array([17, 15, 100], dtype="uint8")
+        upper = np.array([200, 200, 200], dtype="uint8")
+        mask = cv2.inRange(frame, lower, upper)
+        output = cv2.bitwise_and(frame, frame, mask=mask)
 
-    result, frame = cv2.imencode('.jpg', frame, encode_param)
-    # data = zlib.compress(pickle.dumps(frame, 0))
-    data = pickle.dumps(frame, 0)
-    size = len(data)
+        frame = output
 
-    if DEBUG: print("{}: {}".format(img_counter, size))
-    conn.sendall(struct.pack(">L", size) + data)
-    img_counter += 1
+        result, frame = cv2.imencode('.jpg', frame, self.ENC_PARAM)
+        data = pickle.dumps(frame, 0)
+        size = len(data)
 
-cam.release()
+        self.conn.sendall(struct.pack(">L", size) + data)
+
+    def close(self):
+        self.cam.release()
