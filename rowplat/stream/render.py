@@ -36,3 +36,6 @@ class RenderVideo:
         frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
         cv2.imshow('ImageWindow', frame)
         cv2.waitKey(1)
+
+    def close(self):
+        self.socket.close()

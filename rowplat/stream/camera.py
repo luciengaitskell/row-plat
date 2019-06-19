@@ -1,7 +1,10 @@
 import cv2
+from imutils.video import VideoStream
 import socket
 import struct
 import pickle
+import time
+import imutils
 import numpy as np
 
 
@@ -19,30 +22,29 @@ class CameraServer:
         self.socket.listen(10)
         print('Socket now listening')
 
-    def _start_cam(self):
-        self.cam = cv2.VideoCapture(0)
-
-        self.cam.set(3, 320)
-        self.cam.set(4, 240)
+    def _start_cam(self, pi_cam):
+        self.cam = VideoStream(usePiCamera=True, resolution=(1640, 922), framerate=15).start()
+        time.sleep(2.0)
 
     def wait_for_accept(self):
         self.conn, self.addr = self.socket.accept()
 
-    def start(self, wait=False):
-        self._start_cam()
+    def start(self, pi_cam=True, wait=False):
+        self._start_cam(pi_cam)
         self._start_serv()
 
         if wait: self.wait_for_accept()
 
     def frame(self):
-        ret, frame = self.cam.read()
+        frame = self.cam.read()
 
-        lower = np.array([17, 15, 100], dtype="uint8")
-        upper = np.array([200, 200, 200], dtype="uint8")
-        mask = cv2.inRange(frame, lower, upper)
-        output = cv2.bitwise_and(frame, frame, mask=mask)
+        #lower = np.array([17, 15, 100], dtype="uint8")
+        #upper = np.array([200, 200, 200], dtype="uint8")
+        #mask = cv2.inRange(frame, lower, upper)
+        #output = cv2.bitwise_and(frame, frame, mask=mask)
+        #frame = output
 
-        frame = output
+        frame = imutils.resize(frame, height=240)
 
         result, frame = cv2.imencode('.jpg', frame, self.ENC_PARAM)
         data = pickle.dumps(frame, 0)
@@ -51,4 +53,6 @@ class CameraServer:
         self.conn.sendall(struct.pack(">L", size) + data)
 
     def close(self):
-        self.cam.release()
+        self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
+        self.cam.stop()
