@@ -10,6 +10,8 @@ from sim.impl.simplewaypointhandler import SimpleWaypointHandler
 from sim.impl.target import Target
 from sim.plot import Plot
 
+STEP = 0.01
+
 p = Plot()
 
 thr = [
@@ -18,7 +20,7 @@ thr = [
 ]
 
 plat = Platform(thr)
-alg = SimplePathAlg(1, 5, 0.5, 5*np.pi/180., 0.6, 0.3)
+alg = SimplePathAlg(0.25, 3, 0.1, 2*np.pi/180., 0.6, 0.3)
 tar = Target(Position(0., 5., rot=0.))
 wyp = SimpleWaypointHandler(target=tar)
 loc = SimpleLocalizer(plat=plat)
@@ -29,9 +31,9 @@ while True:
     p.waypoint = wyp.waypoint
     p.target = tar.pos
 
-    p.update(1)
+    p.update(0.01)
 
     nav.frame()
-    loc.frame(0.1)
-    tar.frame(0.1)
+    loc.frame(STEP)
+    tar.frame(STEP)
     print(plat.last_thrust)
