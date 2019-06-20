@@ -17,12 +17,15 @@ class XA1110:
     def verif(self):
         self._i2c.write(bytearray([self._addr]))
 
+    def _read_chunk(self) -> bytes:
+        return self._i2c.readfrom(self._addr, LEN)
+
     def read_all_data(self):
         data = []
         append_next = False
 
         while True:
-            raw = self._i2c.readfrom(self._addr, LEN)
+            raw = self._read_chunk()
             strings = raw.split(b'\r')  # raw data strings, split over separate lines
 
             # Check if no new data:
