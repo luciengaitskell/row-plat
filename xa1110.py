@@ -45,3 +45,42 @@ class XA1110:
                 # Enable append, if is last string in the set, and is not empty
 
         return data
+
+    @staticmethod
+    def _checksum(cstring, hex_str=True):
+        """
+        Generate checksum for command string.
+
+        :param cstring: str
+            Input command string
+        :param hex_str: str (default=True)
+            Enable return as byte string of checksum in hexadecimal, without the leading '0x'
+        """
+        t = 0
+
+        for i in range(0, len(cstring)):
+            t = t ^ cstring[i]
+
+        if hex_str:
+            return hex(t).strip('0x').upper().encode('ascii')
+
+        return t
+
+    @classmethod
+    def _format_string(cls, cmd: bytes) -> bytes:
+        """
+        Format full command string from id and arg string.
+
+        :param cmd: bytes
+            Command string to format
+        :return: bytes
+        """
+        cmd = b"PMTK" + cmd
+        csum = cls._checksum(cmd)
+        return b"$" + cmd + b"*" + csum + b"\r\n"
+
+    def write(self, cmd: bytes):
+        """ Write command to the device. """
+        cmd = self._format_string(cmd)
+        self._i2c.writeto(self._addr, cmd)
+        return cmd
