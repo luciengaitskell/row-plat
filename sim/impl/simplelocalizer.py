@@ -1,6 +1,6 @@
 import numpy as np
 
-from rowplat.numpy_tools import rotate
+from rowplat.tools import rotate
 from rowplat.abstract.localizer import Localizer
 from rowplat.motion.platform import Platform
 from rowplat.motion.position import Position

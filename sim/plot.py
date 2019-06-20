@@ -3,7 +3,7 @@ import matplotlib.patches as pat
 
 import numpy as np
 
-from rowplat.numpy_tools import rotate
+from rowplat.tools import rotate
 from rowplat.motion.position import Position
 
 

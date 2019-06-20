@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
-from rowplat.numpy_tools import rotate
+from rowplat.tools import rotate
 from .platform import Platform
 from .position import Position
 from ..abstract.waypointhandler import WaypointHandler
