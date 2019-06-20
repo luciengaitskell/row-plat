@@ -26,8 +26,12 @@ class SimplePathAlg(PathAlgorithm):  # TODO: Gotta angle towards the point.... w
             return thrust
 
         scale = (d - self._mind) / (self._maxd - self._mind)
+        if scale > 1:
+            scale = 1
+        elif scale < 0:
+            scale = 0
 
-        thrust[0:2] = diff.loc * (scale * (1-self._mint) + self._mint)
+        thrust[0:2] = (diff.loc / d) * scale * (1-self._mint) + self._mint
 
         if abs(diff.rot) > self._dba:
             thrust[2] = diff.rot/math.pi * (1 - self._mintr) + self._mintr
