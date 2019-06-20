@@ -26,7 +26,7 @@ class Plot:
 
     @boat.setter
     def boat(self, pos: Position):
-        head = pos.loc + np.asarray(np.array([0, 1]) * rotate(pos.rot)).flatten()
+        head = pos.loc + np.asarray(np.array([0, 1]) @ rotate(pos.rot)).flatten()
         self._boat.set_positions(pos.loc, head)
 
     @property

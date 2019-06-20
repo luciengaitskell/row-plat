@@ -60,7 +60,8 @@ class Platform:
         :param vr: z axis rotation input
         :return: None
         """
-        thrusts = np.asarray(np.array([vx, vy, vr]) * self.coeff_inv.T).flatten()
+
+        thrusts = np.asarray(np.array([vx, vy, vr]) @ self.coeff_inv.T).flatten()
 
         # Scale all if above one:
         if len(thrusts) > 0:

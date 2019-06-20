@@ -25,7 +25,7 @@ class SimpleLocalizer(Localizer):
         motion = np.asarray(self._plat.coeff * ths.reshape((2,1))).flatten()
         motion *= tdelta
 
-        motion[0:2] = motion[0:2] * rotate(self.loc.rot)
+        motion[0:2] = motion[0:2] @ rotate(self.loc.rot)
 
         self.loc._pos = self.loc._pos + motion
 

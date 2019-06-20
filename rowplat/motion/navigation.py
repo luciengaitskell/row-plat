@@ -28,5 +28,5 @@ class Navigation:  # TODO: ADD THREADING
     def frame(self):
         thr = self.algorithm.calc(self._pos, self._wyp.waypoint)
         rot = rotate(self._pos.current.rot)
-        thr[0:2] = thr[0:2] * rot
+        thr[0:2] = thr[0:2] @ rot
         self._plat.set_thrust(*thr)

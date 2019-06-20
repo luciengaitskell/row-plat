@@ -12,7 +12,7 @@ class Target:
     def frame(self, tdelta):
         dpos_prime = self.vel * tdelta  # Movement in target frame
 
-        dpos = dpos_prime*rotate(self.pos.rot)  # Rotate movement for absolute frame
+        dpos = dpos_prime @ rotate(self.pos.rot)  # Rotate movement for absolute frame
         self.pos.loc = self.pos.loc + dpos  # Add to position track
 
         return dpos
