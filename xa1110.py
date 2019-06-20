@@ -17,7 +17,7 @@ class XA1110:
     def verif(self):
         self._i2c.write(bytearray([self._addr]))
 
-    def read_new(self):
+    def read_all_data(self):
         data = []
         append_next = False
 

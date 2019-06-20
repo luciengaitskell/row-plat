@@ -12,7 +12,7 @@ sentence_count = 0
 
 
 while True:
-    data = gps.read_new()
+    data = gps.read_all_data()
 
     for s in data:
         for c in s:
