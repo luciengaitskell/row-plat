@@ -4,9 +4,10 @@ import math
 from rowplat.abstract.localizer import Localizer
 from rowplat.motion.navigation import PathAlgorithm
 from rowplat.motion.position import Position
+from rowplat.tools import diff_angle
 
 
-class SimplePathAlg(PathAlgorithm):  # TODO: Gotta angle towards the point.... we can't strafe
+class SimplePathAlg(PathAlgorithm):
     def __init__(self, mind, maxd, db, dba, mint, mintr):
         self._mind = mind
         self._maxd = maxd
@@ -32,6 +33,8 @@ class SimplePathAlg(PathAlgorithm):  # TODO: Gotta angle towards the point.... w
             scale = 0
 
         thrust[0:2] = (diff.loc / d) * scale * (1-self._mint) + self._mint
+
+        diff.rot = diff_angle(np.arctan2(*diff.loc), pos.current.rot)
 
         if abs(diff.rot) > self._dba:
             thrust[2] = diff.rot/math.pi * (1 - self._mintr) + self._mintr
