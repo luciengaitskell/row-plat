@@ -1,6 +1,6 @@
 from machine import I2C, Pin
 
-LEN = 0x32
+LEN = 225
 
 
 class XA1110:
