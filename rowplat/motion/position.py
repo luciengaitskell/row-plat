@@ -10,7 +10,14 @@ class UNITS(Enum):
 class Position:
     def __init__(self, x, y=None, rot=None, time=None, units=None):
         if y is None:
-            self._pos = x
+            self._pos = np.ndarray((3,))
+            if rot is not None:
+                self._pos = np.ndarray((3,))
+                self._pos[0:2] = x
+                self._pos[2] = rot
+            else:
+                self._pos[0:3] = x
+
         else:
             self._pos = np.array((x, y, rot))
 
