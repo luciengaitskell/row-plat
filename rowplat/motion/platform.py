@@ -46,7 +46,7 @@ class Platform:
 
         self.coeff = np.mat([c_x, c_y, c_rot])  # Coefficient matrix
 
-        self.coeff_inv: np.matrix = np.linalg.pinv(self.coeff)
+        self.coeff_inv: np.matrix = np.linalg.pinv(self.coeff).T
 
         for (x, y), val in np.ndenumerate(self.coeff_inv):  # filter out small values
             if abs(val) < lower_bound:
@@ -61,7 +61,7 @@ class Platform:
         :return: None
         """
 
-        thrusts = np.asarray(np.array([vx, vy, vr]) @ self.coeff_inv.T).flatten()
+        thrusts = np.asarray(np.array([vx, vy, vr]) @ self.coeff_inv).flatten()
 
         # Scale all if above one:
         if len(thrusts) > 0:
