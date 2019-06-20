@@ -8,7 +8,7 @@ from rowplat.motion.position import Position
 
 class SimpleLocalizer(Localizer):
     def _calc_translate(self, new: Position, current: Position, rot) -> Position:
-        pos = Position(new.arr - current.arr)
+        pos = Position(new.loc - current.loc, rot=rot)
         pos.rot = rot
         return pos
 

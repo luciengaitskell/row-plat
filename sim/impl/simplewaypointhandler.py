@@ -12,5 +12,5 @@ class SimpleWaypointHandler(WaypointHandler):
         self._dist = np.array([2, 0])  # Distance from target to hold
 
     def _get_waypoint(self):
-        wyp = Position(*(self._tar.pos.loc + self._dist), self._tar.pos.rot)
+        wyp = Position(*(self._tar.pos.loc + self._dist), None)
         return wyp

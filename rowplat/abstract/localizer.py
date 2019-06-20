@@ -23,7 +23,10 @@ class Localizer(metaclass=ABCMeta):
         if current is None:
             current = self.current
 
-        rot = diff_angle(new.rot, current.rot)
+        if new.rot is not None:
+            rot = diff_angle(new.rot, current.rot)
+        else:
+            rot = 0
         return self._calc_translate(new, current, rot)
 
     @abstractmethod
