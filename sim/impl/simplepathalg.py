@@ -19,12 +19,14 @@ class SimplePathAlg(PathAlgorithm):  # TODO: Gotta angle towards the point.... w
         diff = pos.translate(wyp)  # Support 'None' for rot
         d = np.linalg.norm(diff.loc)
 
+        thrust = np.zeros((3,))
+
+        # On target:
         if d <= self._db:
-            return 0, 0, 0
+            return thrust
 
         scale = (d - self._mind) / (self._maxd - self._mind)
 
-        thrust = np.zeros((3,))
         thrust[0:2] = diff.loc * (scale * (1-self._mint) + self._mint)
 
         if abs(diff.rot) > self._dba:
