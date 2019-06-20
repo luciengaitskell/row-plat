@@ -18,7 +18,7 @@ thr = [
 ]
 
 plat = Platform(thr)
-alg = SimplePathAlg(1, 5, 0.5, 5*np.pi/180., 0.1)
+alg = SimplePathAlg(1, 5, 0.5, 5*np.pi/180., 0.6, 0.3)
 tar = Target(Position(0., 5., rot=0.))
 wyp = SimpleWaypointHandler(target=tar)
 loc = SimpleLocalizer(plat=plat)
