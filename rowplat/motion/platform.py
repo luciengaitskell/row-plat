@@ -3,6 +3,7 @@ import numpy as np
 
 from typing import List
 
+from rowplat.tools import diff_angle
 from ..abstract.thruster import Thruster
 
 
@@ -39,7 +40,7 @@ class Platform:
             # Calculate perpendicular angle of thruster position (pointing counter clockwise):
             perp_ang = np.arctan2(v[0], v[1])  # find vector angle (from origin to thruster)
             perp_ang += np.pi / 2  # rotate to perpendicular
-            perp_ang = (perp_ang + np.pi) % (2 * np.pi) - np.pi  # limit to [-pi, pi)
+            perp_ang = diff_angle(perp_ang)  # limit to [-pi, pi)
 
             c_rot.append(np.cos(a - perp_ang)
                          * center_dist)

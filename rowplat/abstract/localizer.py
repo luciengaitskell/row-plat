@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 import math
 import numpy as np
 
+from rowplat.tools import diff_angle
 from ..motion.position import Position
 
 
@@ -22,7 +23,7 @@ class Localizer(metaclass=ABCMeta):
         if current is None:
             current = self.current
 
-        rot = (new.rot-current.rot + math.pi) % (2*math.pi) - math.pi
+        rot = diff_angle(new.rot, current.rot)
         return self._calc_translate(new, current, rot)
 
     @abstractmethod
