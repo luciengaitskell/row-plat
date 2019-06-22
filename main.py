@@ -12,15 +12,14 @@ sentence_count = 0
 
 
 while True:
-    data = gps.read_all_data()
+    line = gps.read_line()
 
-    for s in data:
-        for c in s:
-            stat = my_gps.update(chr(c))
-            if stat:
-                print(stat)
-                stat = None
-                sentence_count += 1
+    for c in line:
+        stat = my_gps.update(chr(c))
+        if stat:
+            print(stat)
+            stat = None
+            sentence_count += 1
 
     if sentence_count >= 30:
         break
