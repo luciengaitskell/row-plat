@@ -20,6 +20,10 @@ class XA1110:
     def _read_chunk(self) -> bytes:
         return self._i2c.readfrom(self._addr, LEN)
 
+    def read_line(self):
+        raw = self._read_chunk()
+        return raw.replace(b'\r', b'').replace(b'\n', b'')
+
     def read_all_data(self):
         data = []
         append_next = False
