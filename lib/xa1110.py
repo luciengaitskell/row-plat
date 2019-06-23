@@ -65,8 +65,11 @@ class XA1110:
         for i in range(0, len(cstring)):
             t = t ^ cstring[i]
 
+        # "{0:#0{1}x}".format(42,6) - see https://stackoverflow.com/questions/12638408/decorating-hex-function-to-pad-zeros
+
         if hex_str:
-            return hex(t).strip('0x').upper().encode('ascii')
+            # return hex(t).strip('0x').upper().encode('ascii') # This argument provides no leading 0, so not suitable
+            return "{:0>2X}".format(t).encode('ascii') # Ensures leading 0 in hex, two characters
 
         return t
 
@@ -79,7 +82,9 @@ class XA1110:
             Command string to format
         :return: bytes
         """
-        cmd = b"PMTK" + cmd
+
+        # cmd = b"PMTK" + cmd  # Want to send commands other than PMTK
+
         csum = cls._checksum(cmd)
         return b"$" + cmd + b"*" + csum + b"\r\n"
 
