@@ -1,5 +1,5 @@
-from xa1110 import XA1110
-from micropygps import MicropyGPS
+from lib.xa1110 import XA1110
+from lib.micropygps import MicropyGPS
 
 gps = XA1110()
 
