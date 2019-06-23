@@ -19,6 +19,11 @@ def mount():
     return sd
 
 
+def unmount():
+    """ Unmount sd card from file system. """
+    os.umount(ROOT)
+
+
 """
 Access the sd card with usual MicroPython file system functions:
  * os.listdir('/sd')
