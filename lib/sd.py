@@ -1,4 +1,6 @@
 from machine import Pin, SDCard
+# https://docs.micropython.org/en/latest/library/machine.SDCard.html
+
 import os
 
 
@@ -22,6 +24,12 @@ def mount():
 def unmount():
     """ Unmount sd card from file system. """
     os.umount(ROOT)
+
+    """ 
+    Sync on all file systems. This would be better than an unmount() since we can continue access interactively. 
+    However microPython doesn't have this method 
+    """
+    # os.sync()
 
 
 """

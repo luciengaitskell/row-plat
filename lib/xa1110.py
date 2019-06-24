@@ -1,3 +1,10 @@
+"""
+xa1110.py
+190620 LG v1 Set up all required functionality
+190623 RG v2 Adding inline decoding of ZDA
+
+"""
+
 from machine import I2C, Pin
 
 LEN = 225
@@ -82,8 +89,8 @@ class XA1110:
             Command string to format
         :return: bytes
         """
-
-        # cmd = b"PMTK" + cmd  # Want to send commands other than PMTK
+        # Change - Want to send commands other than PMTK so don't make this default
+        # cmd = b"PMTK" + cmd  # if only PMTK instructions are being issued
 
         csum = cls._checksum(cmd)
         return b"$" + cmd + b"*" + csum + b"\r\n"
