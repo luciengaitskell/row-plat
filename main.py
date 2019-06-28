@@ -3,6 +3,8 @@ Read continually from gps module and save raw return sentences to a file
 Filename includes date and time
 
 Author: Lucien Gaitskell © 2019
+
+190628 RG v2.1 Sync to Github
 """
 
 from lib.xa1110 import XA1110

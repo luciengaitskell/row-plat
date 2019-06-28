@@ -1,3 +1,6 @@
+# 190628 RG v2.1 Sync to Github
+
+
 from machine import Pin, SDCard
 # https://docs.micropython.org/en/latest/library/machine.SDCard.html
 

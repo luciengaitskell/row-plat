@@ -2,7 +2,7 @@
 xa1110.py
 190620 LG v1 Set up all required functionality
 190623 RG v2 Adding inline decoding of ZDA
-
+190628 RG v2.1 Sync to Github
 """
 
 from machine import I2C, Pin
