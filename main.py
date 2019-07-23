@@ -10,7 +10,7 @@ Author: Lucien Gaitskell © 2019
 from lib.xa1110 import XA1110
 from lib import sd
 import utime
-from machine import Pin
+from machine import Pin, I2C
 # import os
 
 led_red = Pin(13, Pin.OUT)
@@ -20,10 +20,15 @@ print('\nGNSS stored to SD will begin in a few secs (^C to stop) ...')
 
 # Set up communication with GNSS
 gps = XA1110()
+gps_two = XA1110(i2c=I2C(scl=Pin(32), sda=Pin(14), freq=100000))
+
 # Tell GPS to output ZDA time date info every 1 sec (last but one parameter)
 gps.write(b'PMTK314,0,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,1,0')
 # Clear buffer so that we know that data that followings is current
 gps.read_all_data()
+
+gps_two.write(b'PMTK314,0,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,1,0')
+gps_two.read_all_data()
 
 #If an additional delay is required to allow ^C before mounting file
 utime.sleep_ms(3000) # ms - this is more likely to be compatible than sleep()
@@ -53,18 +58,26 @@ sd.mount()
 print('INFO: SD mounted')
 
 # If we are using default name
-filename = sd.ROOT + '/'+date_tag+'_raw_NMEA.txt'
+filename = sd.ROOT + '/'+date_tag+'_raw_NMEA1.txt'
+filename_two = sd.ROOT + '/'+date_tag+'_raw_NMEA2.txt'
+
 nmea_out_file = open( filename, 'w')
+nmea_out_file_two = open( filename_two, 'w')
+
 print( 'INFO: Saving to %s'%filename )
+
 led_red.on()
 
 try:
     while True:
         for d in gps.read_all_data():
             nmea_out_file.write( d + b'\n' )
+        for d in gps_two.read_all_data():
+            nmea_out_file_two.write( d + b'\n' )
 finally:
     led_red.off()
     nmea_out_file.close()
+    nmea_out_file_two.close()
     print("INFO: Closed NMEA Output File - %s"%filename )
 
     # Not going to unmount so that a following interactive session is possible after ^C the storage
