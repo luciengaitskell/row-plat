@@ -32,6 +32,8 @@ _POWER_NORMAL = const(0x00)
 _POWER_LOW = const(0x01)
 _POWER_SUSPEND = const(0x02)
 
+_CALIBRATION_REGISTER = const(0x35)
+
 
 class BNO055:
     """
@@ -116,6 +118,22 @@ class BNO055:
                 chip_id = 0
             if chip_id == _CHIP_ID:
                 return
+
+    @property
+    def calibration_status(self):
+        """Tuple containing sys, gyro, accel, and mag calibration data."""
+        calibration_data = self.i2c.readfrom_mem(self.address, _CALIBRATION_REGISTER, 1)[0]
+        sys = (calibration_data >> 6) & 0x03
+        gyro = (calibration_data >> 4) & 0x03
+        accel = (calibration_data >> 2) & 0x03
+        mag = calibration_data & 0x03
+        return sys, gyro, accel, mag
+
+    @property
+    def calibrated(self):
+        """Boolean indicating calibration status."""
+        sys, gyro, accel, mag = self.calibration_status
+        return sys == gyro == accel == mag == 0x03
 
     def use_external_crystal(self, value):
         last_mode = self.operation_mode()
