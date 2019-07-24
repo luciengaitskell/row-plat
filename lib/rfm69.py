@@ -71,7 +71,7 @@ import time
 
 from micropython import const
 
-import adafruit_bus_device.spi_device as spidev
+from machine import SPI, Pin
 
 
 __version__ = "0.0.0-auto.0"
@@ -288,20 +288,21 @@ class RFM69:
 
     payload_ready = _RegisterBits(_REG_IRQ_FLAGS2, offset=2)
 
-    def __init__(self, spi, cs, reset, frequency, *, sync_word=b'\x2D\xD4',
-                 preamble_length=4, encryption_key=None, high_power=True, baudrate=5000000):
+    def __init__(self, cs: int, reset: int, *, baudrate=100000):
+        self._cselect = Pin(cs, Pin.OUT, value=0)
+        # Device support SPI mode 0 (polarity & phase = 0) up to a max of 10mhz.
+        self._device = SPI(1, baudrate=baudrate, polarity=0, phase=0, sck=Pin(5, Pin.OUT), mosi=Pin(18, Pin.OUT), miso=Pin(19, Pin.IN))
+        # Setup reset as a digital output that's low.
+        self._reset = Pin(reset, Pin.OUT, value=0)
+
+    def init(self, frequency, *, sync_word=b'\x2D\xD4', preamble_length=4, encryption_key=None, high_power=True):
         self._tx_power = 13
         self.high_power = high_power
-        # Device support SPI mode 0 (polarity & phase = 0) up to a max of 10mhz.
-        self._device = spidev.SPIDevice(spi, cs, baudrate=baudrate,
-                                        polarity=0, phase=0)
-        # Setup reset as a digital output that's low.
-        self._reset = reset
-        self._reset.switch_to_output(value=False)
         # Reset the chip.
         self.reset()
         # Check the version of the chip.
         version = self._read_u8(_REG_VERSION)
+        print("version: ", version)
         if version != 0x24:
             raise RuntimeError('Failed to find RFM69 with expected version, check wiring!')
         # Enter idle state.
@@ -321,22 +322,22 @@ class RFM69:
         # by default.  Users with advanced knowledge can manually reconfigure
         # for any other mode (consulting the datasheet is absolutely
         # necessary!).
-        self.data_mode = 0b00              # Packet mode
-        self.modulation_type = 0b00        # FSK modulation
-        self.modulation_shaping = 0b01     # Gaussian filter, BT=1.0
-        self.bitrate = 250000              # 250kbs
+        self.data_mode = 0b00  # Packet mode
+        self.modulation_type = 0b00  # FSK modulation
+        self.modulation_shaping = 0b01  # Gaussian filter, BT=1.0
+        self.bitrate = 250000  # 250kbs
         self.frequency_deviation = 250000  # 250khz
-        self.rx_bw_dcc_freq = 0b111        # RxBw register = 0xE0
+        self.rx_bw_dcc_freq = 0b111  # RxBw register = 0xE0
         self.rx_bw_mantissa = 0b00
         self.rx_bw_exponent = 0b000
-        self.afc_bw_dcc_freq = 0b111       # AfcBw register = 0xE0
+        self.afc_bw_dcc_freq = 0b111  # AfcBw register = 0xE0
         self.afc_bw_mantissa = 0b00
         self.afc_bw_exponent = 0b000
-        self.packet_format = 1             # Variable length.
-        self.dc_free = 0b10                # Whitening
-        self.crc_on = 1                    # CRC enabled
-        self.crc_auto_clear = 0            # Clear FIFO on CRC fail
-        self.address_filtering = 0b00      # No address filtering
+        self.packet_format = 1  # Variable length.
+        self.dc_free = 0b10  # Whitening
+        self.crc_on = 1  # CRC enabled
+        self.crc_auto_clear = 0  # Clear FIFO on CRC fail
+        self.address_filtering = 0b00  # No address filtering
         # Set the preamble length.
         self.preamble_length = preamble_length
         # Set frequency.
@@ -346,6 +347,10 @@ class RFM69:
         # Set transmit power to 13 dBm, a safe value any module supports.
         self.tx_power = 13
 
+    def close(self):
+        """ Close down SPI bus -- VERY important to run at end, otherwise will require soft reset between runs. """
+        self._device.deinit()
+
     # pylint: disable=no-member
     # Reconsider this disable when it can be tested.
     def _read_into(self, address, buf, length=None):
@@ -354,15 +359,20 @@ class RFM69:
         # will be filled.
         if length is None:
             length = len(buf)
-        with self._device as device:
-            self._BUFFER[0] = address & 0x7F  # Strip out top bit to set 0
-                                              # value (read).
-            device.write(self._BUFFER, end=1)
-            device.readinto(buf, end=length)
+
+        self._cselect.off()
+        self._BUFFER[0] = address & 0x7F  # Strip out top bit to set 0
+                                          # value (read).
+        self._device.write(self._BUFFER[:1]) #end=1
+        read_buf = bytearray(length)
+        self._device.readinto(read_buf) #end=length
+        buf[:length] = read_buf
+        self._cselect.on()
 
     def _read_u8(self, address):
         # Read a single byte from the provided address and return it.
         self._read_into(address, self._BUFFER, length=1)
+
         return self._BUFFER[0]
 
     def _write_from(self, address, buf, length=None):
@@ -371,27 +381,30 @@ class RFM69:
         # buffer is written.
         if length is None:
             length = len(buf)
-        with self._device as device:
-            self._BUFFER[0] = (address | 0x80) & 0xFF  # Set top bit to 1 to
-                                                       # indicate a write.
-            device.write(self._BUFFER, end=1)
-            device.write(buf, end=length)
+
+        self._cselect.off()
+        self._BUFFER[0] = (address | 0x80) & 0xFF  # Set top bit to 1 to
+                                                   # indicate a write.
+        self._device.write(self._BUFFER[:1]) #end=1
+        self._device.write(buf[:length]) #end=length
+        self._cselect.on()
 
     def _write_u8(self, address, val):
         # Write a byte register to the chip.  Specify the 7-bit address and the
         # 8-bit value to write to that address.
-        with self._device as device:
-            self._BUFFER[0] = (address | 0x80) & 0xFF  # Set top bit to 1 to
-                                                       # indicate a write.
-            self._BUFFER[1] = val & 0xFF
-            device.write(self._BUFFER, end=2)
+        self._cselect.off()
+        self._BUFFER[0] = (address | 0x80) & 0xFF  # Set top bit to 1 to
+                                                   # indicate a write.
+        self._BUFFER[1] = val & 0xFF
+        self._device.write(self._BUFFER[:2]) #end=2
+        self._cselect.on()
 
     def reset(self):
         """Perform a reset of the chip."""
         # See section 7.2.2 of the datasheet for reset description.
-        self._reset.value = True
+        self._reset.value(True)
         time.sleep(0.0001)  # 100 us
-        self._reset.value = False
+        self._reset.value(False)
         time.sleep(0.005)   # 5 ms
 
     def idle(self):
@@ -694,28 +707,29 @@ class RFM69:
         # pylint: enable=len-as-condition
         self.idle()  # Stop receiving to clear FIFO and keep it clear.
         # Fill the FIFO with a packet to send.
-        with self._device as device:
-            self._BUFFER[0] = (_REG_FIFO | 0x80)  # Set top bit to 1 to
-                                                  # indicate a write.
-            self._BUFFER[1] = (len(data) + 4) & 0xFF
-            # Add 4 bytes of headers to match RadioHead library.
-            # Just use the defaults for global broadcast to all receivers
-            # for now.
-            self._BUFFER[2] = tx_header[0] # Header: To
-            self._BUFFER[3] = tx_header[1] # Header: From
-            self._BUFFER[4] = tx_header[2] # Header: Id
-            self._BUFFER[5] = tx_header[3] # Header: Flags
-            device.write(self._BUFFER, end=6)
-            # Now send the payload.
-            device.write(data)
+        self._cselect.off()
+        self._BUFFER[0] = (_REG_FIFO | 0x80)  # Set top bit to 1 to
+                                              # indicate a write.
+        self._BUFFER[1] = (len(data) + 4) & 0xFF
+        # Add 4 bytes of headers to match RadioHead library.
+        # Just use the defaults for global broadcast to all receivers
+        # for now.
+        self._BUFFER[2] = tx_header[0] # Header: To
+        self._BUFFER[3] = tx_header[1] # Header: From
+        self._BUFFER[4] = tx_header[2] # Header: Id
+        self._BUFFER[5] = tx_header[3] # Header: Flags
+        self._device.write(self._BUFFER[:6]) #end=6
+        # Now send the payload.
+        self._device.write(data)
+        self._cselect.on()
         # Turn on transmit mode to send out the packet.
         self.transmit()
         # Wait for packet sent interrupt with explicit polling (not ideal but
         # best that can be done right now without interrupts).
-        start = time.monotonic()
+        start = time.ticks_ms()
         timed_out = False
         while not timed_out and not self.packet_sent:
-            if (time.monotonic() - start) >= timeout:
+            if (time.ticks_diff(time.ticks_ms(), start))/10.**3 >= timeout:
                 timed_out = True
         # Go back to idle mode after transmit.
         self.idle()
@@ -750,10 +764,10 @@ class RFM69:
         # surely miss or overflow the FIFO when packets aren't read fast
         # enough, however it's the best that can be done from Python without
         # interrupt supports.
-        start = time.monotonic()
+        start = time.ticks_ms()
         timed_out = False
         while not timed_out and not self.payload_ready:
-            if (time.monotonic() - start) >= timeout:
+            if (time.ticks_diff(time.ticks_ms(), start))/10.**3 >= timeout:
                 timed_out = True
         # Payload ready is set, a packet is in the FIFO.
         packet = None
@@ -762,28 +776,33 @@ class RFM69:
         if timed_out:
             return None
         # Read the data from the FIFO.
-        with self._device as device:
-            self._BUFFER[0] = _REG_FIFO & 0x7F  # Strip out top bit to set 0
-                                                # value (read).
-            device.write(self._BUFFER, end=1)
-            # Read the length of the FIFO.
-            device.readinto(self._BUFFER, end=1)
-            fifo_length = self._BUFFER[0]
-            # Handle if the received packet is too small to include the 4 byte
-            # RadioHead header--reject this packet and ignore it.
-            if fifo_length < 4:
-                # Invalid packet, ignore it.  However finish reading the FIFO
-                # to clear the packet.
-                device.readinto(self._BUFFER, end=fifo_length)
+        self._cselect.off()
+        self._BUFFER[0] = _REG_FIFO & 0x7F  # Strip out top bit to set 0
+                                            # value (read).
+        self._device.write(self._BUFFER[:1]) #end=1
+        # Read the length of the FIFO.
+        read_buf = bytearray(1)
+        self._device.readinto(read_buf)  # end=1
+        self._BUFFER[:1] = read_buf
+        fifo_length = self._BUFFER[0]
+        # Handle if the received packet is too small to include the 4 byte
+        # RadioHead header--reject this packet and ignore it.
+        if fifo_length < 4:
+            # Invalid packet, ignore it.  However finish reading the FIFO
+            # to clear the packet.
+            read_buf = bytearray(fifo_length)
+            self._device.readinto(read_buf)  #end=fifo_length
+            self._BUFFER[:fifo_length] = read_buf
+            packet = None
+        else:
+            packet = bytearray(fifo_length)
+            self._device.readinto(packet)
+            if (rx_filter != _RH_BROADCAST_ADDRESS and packet[0] != _RH_BROADCAST_ADDRESS
+                    and packet[0] != rx_filter):
                 packet = None
-            else:
-                packet = bytearray(fifo_length)
-                device.readinto(packet)
-                if (rx_filter != _RH_BROADCAST_ADDRESS and packet[0] != _RH_BROADCAST_ADDRESS
-                        and packet[0] != rx_filter):
-                    packet = None
-                elif not with_header:  # skip the header if not wanted
-                    packet = packet[4:]
+            elif not with_header:  # skip the header if not wanted
+                packet = packet[4:]
+        self._cselect.on()
 
         # Listen again if necessary and return the result packet.
         if keep_listening:
