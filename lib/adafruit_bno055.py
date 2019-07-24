@@ -116,7 +116,7 @@ class BNO055:
     def __init__(self, i2c, address=0x28):
         self.i2c = i2c
         self.address = address
-        self.buffer = bytearray(2)
+        self.buffer = bytearray(1)
         chip_id = self._read_register(_ID_REGISTER)
         if chip_id != _CHIP_ID:
             raise RuntimeError("bad chip id (%x != %x)" % (chip_id, _CHIP_ID))
@@ -129,17 +129,11 @@ class BNO055:
         time.sleep(0.01)
 
     def _write_register(self, register, value):
-        self.buffer[0] = register
-        self.buffer[1] = value
-        self.i2c.writeto(self.address, self.buffer)
+        self.buffer[0] = value
+        self.i2c.writeto_mem(self.address, register, self.buffer)
 
     def _read_register(self, register):
-        self.buffer[0] = register
-        self.i2c.writeto(self.address, self.buffer[:1], False)
-
-        buf = bytearray(1)
-        self.i2c.readfrom_into(self.address, buf)
-        return buf[0]
+        return self.i2c.readfrom_mem(self.address, register, 1)[0]
 
     def _reset(self):
         """Resets the sensor to default settings."""
