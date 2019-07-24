@@ -25,16 +25,19 @@
 ``adafruit_bno055`` - Adafruit 9-DOF Absolute Orientation IMU Fusion Breakout - BNO055
 =======================================================================================
 
-This is a CircuitPython driver for the Bosch BNO055 nine degree of freedom
+This is a MicroPython driver for the Bosch BNO055 nine degree of freedom
 inertial measurement unit module with sensor fusion.
 
-* Author(s): Radomir Dopieralski
-"""
-import time
+ * Author(s): Radomir Dopieralski (CircuitPython)
+ * Modified by Lucien Gaitskell for conversion to MicroPython, July 2019
 
+Converted using additional components from:
+ * https://bitbucket.org/thesheep/micropython-bno055/
+"""
 from micropython import const
-from adafruit_bus_device.i2c_device import I2CDevice
-from adafruit_register.i2c_struct import Struct, UnaryStruct
+import time
+import ustruct
+from functools import partial
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_BNO055.git"
@@ -67,67 +70,60 @@ _POWER_REGISTER = const(0x3e)
 _ID_REGISTER = const(0x00)
 
 
-class _ScaledReadOnlyStruct(Struct): # pylint: disable=too-few-public-methods
-    def __init__(self, register_address, struct_format, scale):
-        super(_ScaledReadOnlyStruct, self).__init__(
-            register_address, struct_format)
-        self.scale = scale
-
-    def __get__(self, obj, objtype=None):
-        result = super(_ScaledReadOnlyStruct, self).__get__(obj, objtype)
-        return tuple(self.scale * v for v in result)
-
-    def __set__(self, obj, value):
-        raise NotImplementedError()
-
-
-class _ReadOnlyUnaryStruct(UnaryStruct): # pylint: disable=too-few-public-methods
-    def __set__(self, obj, value):
-        raise NotImplementedError()
-
-
 class BNO055:
     """
     Driver for the BNO055 9DOF IMU sensor.
     """
+    def _registers(self, register, struct, value=None, scale=1):
+        if value is None:
+            size = ustruct.calcsize(struct)
+            data = self.i2c.readfrom_mem(self.address, register, size)
+            value = ustruct.unpack(struct, data)
+            if scale != 1:
+                value = tuple(v * scale for v in value)
+            return value
+        if scale != 1:
+            value = tuple(v / scale for v in value)
+        data = ustruct.pack(struct, *value)
+        self.i2c.writeto_mem(self.address, register, data)
 
-    temperature = _ReadOnlyUnaryStruct(0x34, 'b')
+    def _register(self, value=None, register=0x00, struct='B'):
+        if value is None:
+            return self._registers(register, struct=struct)[0]
+        self._registers(register, struct=struct, value=(value,))
+
+    _chip_id = partial(_register, register=0x00, value=None)
+    _power_mode = partial(_register, register=0x3e)
+    _system_trigger = partial(_register, register=0x3f)
+    _page_id = partial(_register, register=0x07)
+    temperature = partial(_register, register=0x34, value=None)
     """Measures the temperature of the chip in degrees Celsius."""
-    accelerometer = _ScaledReadOnlyStruct(0x08, '<hhh', 1/100)
-    """Gives the raw accelerometer readings, in m/s.
-
-       .. warning:: This is deprecated. Use ``acceleration`` instead. It'll work
-         with other drivers too."""
-    acceleration = _ScaledReadOnlyStruct(0x08, '<hhh', 1/100)
+    acceleration = partial(_registers, register=0x08, struct='<hhh', value=None, scale=1/100)
     """Gives the raw accelerometer readings, in m/s."""
-    magnetometer = _ScaledReadOnlyStruct(0x0e, '<hhh', 1/16)
-    """Gives the raw magnetometer readings in microteslas.
-
-       .. warning:: This is deprecated. Use ``magnetic`` instead. It'll work with
-         other drivers too."""
-    magnetic = _ScaledReadOnlyStruct(0x0e, '<hhh', 1/16)
+    magnetic = partial(_registers, register=0x0e, struct='<hhh', value=None, scale=1/16)
     """Gives the raw magnetometer readings in microteslas."""
-    gyroscope = _ScaledReadOnlyStruct(0x14, '<hhh', 1/16)
+    gyroscope = partial(_registers, register=0x14, struct='<hhh', value=None, scale=1/900)
     """Gives the raw gyroscope reading in degrees per second."""
-    euler = _ScaledReadOnlyStruct(0x1a, '<hhh', 1/16)
+    euler = partial(_registers, register=0x1a, struct='<hhh', value=None, scale=1/16)
     """Gives the calculated orientation angles, in degrees."""
-    quaternion = _ScaledReadOnlyStruct(0x20, '<hhhh', 1/(1<<14))
+    quaternion = partial(_registers, register=0x20, struct='<hhhh', value=None, scale=1/(1<<14))
     """Gives the calculated orientation as a quaternion."""
-    linear_acceleration = _ScaledReadOnlyStruct(0x28, '<hhh', 1/100)
+    linear_acceleration = partial(_registers, register=0x28, struct='<hhh', value=None, scale=1/100)
     """Returns the linear acceleration, without gravity, in m/s."""
-    gravity = _ScaledReadOnlyStruct(0x2e, '<hhh', 1/100)
+    gravity = partial(_registers, register=0x2e, struct='<hhh', value=None, scale=1/100)
     """Returns the gravity vector, without acceleration in m/s."""
 
     def __init__(self, i2c, address=0x28):
-        self.i2c_device = I2CDevice(i2c, address)
+        self.i2c = i2c
+        self.address = address
         self.buffer = bytearray(2)
         chip_id = self._read_register(_ID_REGISTER)
         if chip_id != _CHIP_ID:
             raise RuntimeError("bad chip id (%x != %x)" % (chip_id, _CHIP_ID))
         self._reset()
-        self._write_register(_POWER_REGISTER, _POWER_NORMAL)
-        self._write_register(_PAGE_REGISTER, 0x00)
-        self._write_register(_TRIGGER_REGISTER, 0x00)
+        self._power_mode(_POWER_NORMAL)
+        self._page_id(0)
+        self._system_trigger(0x00)
         time.sleep(0.01)
         self.mode = NDOF_MODE
         time.sleep(0.01)
@@ -135,15 +131,15 @@ class BNO055:
     def _write_register(self, register, value):
         self.buffer[0] = register
         self.buffer[1] = value
-        with self.i2c_device as i2c:
-            i2c.write(self.buffer)
+        self.i2c.writeto(self.address, self.buffer)
 
     def _read_register(self, register):
         self.buffer[0] = register
-        with self.i2c_device as i2c:
-            i2c.write(self.buffer, end=1, stop=False)
-            i2c.readinto(self.buffer, start=1)
-        return self.buffer[1]
+        self.i2c.writeto(self.address, self.buffer[:1], False)
+
+        buf = bytearray(1)
+        self.i2c.readfrom_into(self.address, buf)
+        return buf[0]
 
     def _reset(self):
         """Resets the sensor to default settings."""
