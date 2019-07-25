@@ -22,7 +22,7 @@ class XA1110:
             self.verif()
 
     def verif(self):
-        self._i2c.write(bytearray([self._addr]))
+        self._i2c.writeto(self._addr, bytes(0))
 
     def _read_chunk(self) -> bytes:
         return self._i2c.readfrom(self._addr, LEN)
