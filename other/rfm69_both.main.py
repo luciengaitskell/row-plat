@@ -1,4 +1,4 @@
-from lib.rfm69 import RFM69
+from devices.rfm69 import RFM69
 
 # Set one of these (for respective radio):
 SENDING = False

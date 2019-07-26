@@ -4,11 +4,11 @@ import _thread
 
 from machine import I2C, Pin
 
-from lib.ssd1306 import SSD1306_I2C
-from lib.xa1110 import XA1110
-from lib.micropygps import MicropyGPS
-from lib import bno055
-from lib.rfm69 import RFM69
+from devices.ssd1306 import SSD1306_I2C
+from devices.xa1110 import XA1110
+from devices.micropygps import MicropyGPS
+from devices import bno055
+from devices.rfm69 import RFM69
 
 
 LOOP_PERIOD = 200

@@ -1,5 +1,5 @@
 from machine import I2C, Pin
-from lib.ssd1306 import SSD1306_I2C
+from devices.ssd1306 import SSD1306_I2C
 import time
 import random
 

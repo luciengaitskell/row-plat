@@ -1,6 +1,6 @@
 from machine import I2C, Pin
 import time
-from lib import bno055
+from devices import bno055
 
 
 i2c = I2C(0, scl=Pin(22, mode=Pin.PULL_UP), sda=Pin(23, mode=Pin.PULL_UP), freq=100000)

@@ -7,8 +7,8 @@ Author: Lucien Gaitskell © 2019
 190628 RG v2.1 Sync to Github
 """
 
-from lib.xa1110 import XA1110
-from lib import sd
+from devices.xa1110 import XA1110
+from devices import sd
 import utime
 from machine import Pin, I2C
 # import os
