@@ -1,4 +1,5 @@
 import time
+import ustruct
 import _thread
 
 from machine import I2C, Pin
@@ -7,6 +8,7 @@ from lib.ssd1306 import SSD1306_I2C
 from lib.xa1110 import XA1110
 from lib.micropygps import MicropyGPS
 from lib import bno055
+from lib.rfm69 import RFM69
 
 
 LOOP_PERIOD = 200
@@ -23,6 +25,8 @@ gns.read_all_data()  # Clear buffer so that we know that data that followings is
 gns_data = MicropyGPS(location_formatting='dd')
 
 imu = bno055.BNO055(i2c_bus)
+
+radio = RFM69(32, 15, baudrate=5000000)
 
 # Shared variables:
 running = True
@@ -44,7 +48,7 @@ def loop_read_gns():
 
 def read_bno055():
     global ang
-    ang = imu.euler()[0]
+    ang = round(imu.euler()[0], 2)
 
 
 def update_display():
@@ -57,15 +61,23 @@ def update_display():
     display.show()
 
 
+def send_data():
+    pos = gns_data.latitude, gns_data.longitude
+    data = ustruct.pack("dfsfs", ang, pos[0][0], pos[0][1], pos[1][0], pos[1][1])
+    radio.send(data)
+
+
 _thread.start_new_thread(loop_read_gns, ())
 
 try:
+    radio.init(915.0)
     while running:
         loop_start = time.ticks_ms()  # Loop timer
 
         # Action:
         read_bno055()
         update_display()
+        send_data()
 
         # Handle loop sleep, based on elapsed time:
         sleep = time.ticks_diff(time.ticks_ms(), loop_start)
@@ -76,3 +88,4 @@ try:
 finally:
     running = False
     print("stopped")
+    radio.close()
