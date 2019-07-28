@@ -19,7 +19,7 @@ i2c_bus = I2C(0, scl=Pin(22, mode=Pin.PULL_UP), sda=Pin(23, mode=Pin.PULL_UP))
 # Device setup:
 display = SSD1306_I2C(128, 32, i2c_bus)
 
-radio = RFM69(32, 15, baudrate=5000000)
+radio = RFM69(12, 27, baudrate=5000000)
 
 '''
 gns = XA1110(i2c=i2c_bus)

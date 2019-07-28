@@ -26,7 +26,7 @@ gns_data = MicropyGPS(location_formatting='dd')
 
 imu = bno055.BNO055(i2c_bus)
 
-radio = RFM69(32, 15, baudrate=5000000)
+radio = RFM69(12, 27, baudrate=5000000)
 
 # Shared variables:
 running = True

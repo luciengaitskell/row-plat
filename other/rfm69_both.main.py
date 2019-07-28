@@ -4,7 +4,7 @@ from devices.rfm69 import RFM69
 SENDING = False
 RECEIVING = False
 
-radio = RFM69(32, 15, baudrate=5000000)
+radio = RFM69(12, 27, baudrate=5000000)
 try:
     radio.init(915.0)
     print("temp: ", radio.temperature)
