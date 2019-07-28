@@ -1,3 +1,4 @@
 .idea/
 *.mpy
 settings.py
+debug.py

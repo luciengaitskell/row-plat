@@ -1,1 +1,1 @@
-MODE = None  # 'SEND' or 'RECV'
+MODE = None  # 'SEND' or 'RECV' or 'DEBUG'
