@@ -1,4 +1,9 @@
+# JetBrains:
 .idea/
+
+# MicroPython compiled:
 *.mpy
+
+# Project:
 settings.py
 debug.py
