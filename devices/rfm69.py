@@ -69,7 +69,10 @@ Implementation Notes
 """
 import time
 
-from micropython import const
+try:
+    from micropython import const
+except ModuleNotFoundError:
+    const = lambda x: x
 
 from machine import SPI, Pin
 
