@@ -1,9 +1,7 @@
-import _thread
 import time
 from machine import I2C, Pin
 
-from data.comms.comms import CommsNode
-from data.comms.packet import Packet
+from comms.comms import CommsNode
 from devices.rfm69 import RFM69
 from devices.ssd1306 import SSD1306_I2C
 
