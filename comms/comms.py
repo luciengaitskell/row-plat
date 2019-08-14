@@ -75,9 +75,13 @@ class CommsNode:
 
     def accept_bytes(self, raw_data: bytes):
         p = Packet.from_raw(raw_data)
+        print("RAW: ", p.to_raw)
+        print("LIST RAW: ", list(p.to_raw))
 
         if self._curr_msg_id is None:  # New to connection, start at packet
             msg_id = self._curr_msg_id = p.id
+            print("PICKING UP AT ID: ", msg_id)
+            print("RAW: ", list(raw_data))
         else:
             # CHECK Alignment:
             while True:
@@ -85,6 +89,7 @@ class CommsNode:
                 if diff > 1:  # Much newer packet -> get old ones
                     msg_id = self.next_msg_id
                     self.req_missing(self._curr_msg_id, p.origin_id)
+                    #print("from {} to {} of diff {}".format(self._curr_msg_id, p.id, diff))
                 elif diff == 1:
                     msg_id = self.next_msg_id
                     break
@@ -99,16 +104,21 @@ class CommsNode:
 
         if p.sub_id == 0:
             msg = Message(msg_id)
-            self.msg_store[self._curr_msg_id] = msg
+            try:  #TODO: TEMPORARY
+                self.msg_store[self._curr_msg_id] = msg
+            except:
+                print("INDEX: ", self._curr_msg_id)
+                raise
         else:
             msg = self.msg_store[self._curr_msg_id]
         msg.append(p)
 
         if msg.complete:
-            return msg.finalize()
+            # return msg.finalize()  # Return fully combined bodies
+            return msg.packets[0]  # For DEBUG: Return first packet -- only 1 packet mode supported
         return False
 
-    def gen_message(self, *args, **kwargs) -> bytes:
+    def gen_message(self, *args, **kwargs) -> Packet:
         msg_id = self.next_msg_id
 
         p = Packet(*args, id=msg_id.to_bytes(2, 'little'), origin_id=self.id.to_bytes(1, 'little'), **kwargs)
@@ -119,7 +129,7 @@ class CommsNode:
         else:
             msg = self.msg_store[self._curr_msg_id]
         msg.append(p)
-        return p.to_raw
+        return p
 
     @property
     def next_msg_id(self):
@@ -133,4 +143,5 @@ class CommsNode:
 
     def req_missing(self, id, recp):
         """ Report to sender (`recp`) that packet of `id` is missing. """
+        #print("MISSING ", id)
         return NotImplemented

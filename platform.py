@@ -1,5 +1,6 @@
 import time
 from machine import I2C, Pin
+import random
 
 from comms.comms import CommsNode
 from devices.rfm69 import RFM69
@@ -33,16 +34,15 @@ class Platform:
         #_thread.start_new_thread(self._heartbeat_thread, ())
 
     def heartbeat(self):
-        test_packet = self.c.gen_message(
-            recp_id=bytes([ord('m')]),  # Intended recipient ID
-            codec_id=b'h',  # Codec ID
+        hb_pak = self.c.gen_message(
+            recp_id=0,  # Intended recipient ID
+            codec_id=12,  # Codec ID
             sub_id=bytes([0]),  # Message packet sub ID
             max_id=bytes([0]),  # Maximum number of packets in message
-            csum=bytes([0]),  # Checksum
-            body=bytes([])
+            body=bytes([random.randint(125, 129)])
         )
-        self.radio.send(test_packet)
-        return test_packet
+        self.radio.send(hb_pak.to_raw)
+        return hb_pak
 
     def _heartbeat_thread(self):
         while self.running:

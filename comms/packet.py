@@ -1,6 +1,4 @@
 """ Packet definition for radio communication. """
-from data.integrity import verify
-
 
 VERSION = 1
 
@@ -40,7 +38,7 @@ class Packet:
     codec_id = DataSeg()  # Codec ID
     sub_id = DataSeg()  # Message packet sub ID
     max_id = DataSeg()  # Maximum number of packets in message
-    csum = DataSeg()  # Checksum
+    csum = DataSeg(hidden=True)  # Checksum
     body = DataSeg(raw=True, seg_len=True)  # Body of message (remaining bytes)
 
     @classmethod
@@ -64,11 +62,14 @@ class Packet:
 
         plen = 0
         if not external:
-            self.pver = bytes([VERSION])
+            self.pver = VERSION
         for aname, aval in self.seg_iter(False):
             if not aval.hidden or external:
-                plen += len(kwargs[aname])
                 kwarg_value = kwargs[aname]
+                if isinstance(kwarg_value, int):
+                    kwarg_value = kwarg_value.to_bytes(aval.len, 'little')
+                plen += len(kwarg_value)
+
                 if not aval.raw:
                     kwarg_value = int.from_bytes(kwarg_value, "little")
                 setattr(self, aname, kwarg_value)  # TODO: Need to add check that type is `bytes`, before setting
@@ -76,8 +77,8 @@ class Packet:
                 plen += aval.len
 
         if not external:
-            self.plen = bytes([plen])
-            self.csum = bytes(1)  # TODO: Calculate csum
+            self.plen = plen
+            self.csum = 0  # TODO: Calculate csum
 
     @classmethod
     def from_raw(cls, raw_data: bytes):
@@ -98,13 +99,13 @@ class Packet:
     @property
     def to_raw(self):
         """ Create raw packet byte string, from packet object. """
-        ret = bytearray(self.plen[0])
+        ret = bytearray(self.plen)
         for aname, aval in self.seg_iter():
             seg = getattr(self, aname)
             start = aval.position
 
             if aval.len is True:
-                end = self.plen[0]
+                end = self.plen
             else:
                 end = start + aval.len
 
@@ -113,11 +114,17 @@ class Packet:
             ret[start:end] = seg
         return ret
 
+    def __repr__(self):
+        s = "Packet( "
+        for aname, aval in self.seg_iter(False):
+            s += "{}={}, ".format(aname, getattr(self, aname))
+        return s + ")"
+
     def _verify(self, raw):
         # VERIFY Integrity:
-        if not verify(raw, length=self.plen[0], csum=self.csum[0]):
+        if False:
             raise ValueError("Incomprehensible data.")
 
         # VERIFY Version:
-        if VERSION != int.from_bytes(self.pver, 'little'):
+        if VERSION != self.pver:
             raise ValueError("Mismatched communication version (msg: {}, decoder: {}).".format(self.pver, VERSION))
