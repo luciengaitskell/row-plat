@@ -1,7 +1,7 @@
 """ Radio communication layer. """
 
-from data.codec import Codec, lookup
-from data.comms.packet import Packet, VERSION
+from comms.packet import Packet
+
 #from devices.rfm69 import RFM69
 
 
@@ -26,15 +26,10 @@ class Message:
     def finalize(self):  # Run decode
         # GET Codec:
         c_id = chr(self.packets[0].codec_id)
-        try:
-            _codec = lookup.LOOKUP[c_id]
-        except KeyError:
-            print("ERR No decoder for message type {}".format(c_id))
-        else:
-            full_body = bytearray()
-            for p in self.packets:
-                full_body += p.body
-            _codec.decode(full_body)
+        full_body = bytearray()
+        for p in self.packets:
+            full_body += p.body
+        return full_body
 
     @property
     def max_id(self):
@@ -109,7 +104,9 @@ class CommsNode:
             msg = self.msg_store[self._curr_msg_id]
         msg.append(p)
 
-        if msg.complete: msg.finalize()
+        if msg.complete:
+            return msg.finalize()
+        return False
 
     def gen_message(self, *args, **kwargs) -> bytes:
         msg_id = self.next_msg_id
