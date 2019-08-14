@@ -58,23 +58,23 @@ def update_display():
     plat.display.show()
 
 
-#_thread.start_new_thread(loop_read_gns, ())
+def main():
+    # _thread.start_new_thread(loop_read_gns, ())
+    try:
+        plat.setup()
+        while plat.running:
+            loop_start = time.ticks_ms()  # Loop timer
 
-try:
-    plat.setup()
-    while plat.running:
-        loop_start = time.ticks_ms()  # Loop timer
+            # Action:
+            recv_data()
+            update_display()
 
-        # Action:
-        recv_data()
-        update_display()
-
-        # Handle loop sleep, based on elapsed time:
-        t_elapsed = time.ticks_diff(time.ticks_ms(), loop_start)
-        sleep = LOOP_PERIOD - t_elapsed
-        if sleep > 0:
-            time.sleep_ms(sleep)
-        else:
-            print("CLOCK STRETCHING ", sleep)
-finally:
-    plat.close()
+            # Handle loop sleep, based on elapsed time:
+            t_elapsed = time.ticks_diff(time.ticks_ms(), loop_start)
+            sleep = LOOP_PERIOD - t_elapsed
+            if sleep > 0:
+                time.sleep_ms(sleep)
+            else:
+                print("CLOCK STRETCHING ", sleep)
+    finally:
+        plat.close()

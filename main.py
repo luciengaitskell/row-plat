@@ -1,10 +1,13 @@
 from settings import MODE
 
 if MODE == 'SEND':
-    import send_main
+    from send_main import main
 elif MODE == 'RECV':
-    import recv_main
+    from recv_main import main
 elif MODE == 'DEBUG':
-    import debug
+    from debug import main
 else:
-    print("INVALID START MODE")
+    def main():
+        print("INVALID START MODE")
+
+main()
