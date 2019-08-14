@@ -1,9 +1,9 @@
 from settings import MODE
 
-if MODE == 'SEND':
-    from send_main import main
-elif MODE == 'RECV':
-    from recv_main import main
+if MODE == 'BOAT':
+    from boat_main import main
+elif MODE == 'CTRL':
+    from ctrl_main import main
 elif MODE == 'DEBUG':
     from debug import main
 else:
