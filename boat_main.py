@@ -16,20 +16,20 @@ def main():
             loop_start = time.ticks_ms()  # Loop timer
 
             # Action:
-            print("pre")
-            data = plat.radio.receive(
-                timeout=0.1)  # Data seems to be incorrect after send -- need to revise encoding for errors?
-            print("post")
+            data = plat.radio.receive(timeout=0.1)
             # print(data)
             if isinstance(data, bytearray):
+                print("\n")
                 pak = plat.c.accept_bytes(data)
+                print("RECEIVED (strength: {})".format(plat.radio.rssi))
                 print(pak)
-                #print(list(pak.to_raw))
                 last_success = time.ticks_ms()
+            else:
+                print("type: ", type(data))
 
             if last_success is not None and time.ticks_diff(time.ticks_ms(), last_success) > 2000:
                 print("No Data")
-            print("-----")
+                last_success = None
 
             # Handle loop sleep, based on elapsed time:
             t_elapsed = time.ticks_diff(time.ticks_ms(), loop_start)
