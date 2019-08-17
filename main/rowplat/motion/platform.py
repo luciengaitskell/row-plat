@@ -9,12 +9,19 @@ from ..abstract.thruster import Thruster
 
 class Platform:
     def __init__(self, thrusters: List[Thruster]):
-        self._ths = thrusters
-        self.last_thrust = np.zeros((len(self._ths,)))
-
         self.coeff = None
         self.coeff_inv = None
 
+        self.thrusters = thrusters
+
+    @property
+    def thrusters(self):
+        return self._ths
+
+    @thrusters.setter
+    def thrusters(self, ths: List[Thruster]):
+        self._ths = ths
+        self.last_thrust = np.zeros((len(self._ths, )))
         self._gen_coeff_mat()
 
     def _gen_coeff_mat(self, lower_bound=10 ** -10):  # Generate coefficient matrix
@@ -47,7 +54,7 @@ class Platform:
 
         self.coeff = np.mat([c_x, c_y, c_rot])  # Coefficient matrix
 
-        self.coeff_inv: np.matrix = np.linalg.pinv(self.coeff).T
+        self.coeff_inv = np.linalg.pinv(self.coeff).T  # np.matrix
 
         for (x, y), val in np.ndenumerate(self.coeff_inv):  # filter out small values
             if abs(val) < lower_bound:

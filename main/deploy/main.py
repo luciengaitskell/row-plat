@@ -1,24 +1,44 @@
 import serial
+import time
 
 from rowplat.motion.platform import Platform
 from rowplat.motion.position import Position
 from sim.impl.simplethruster import SimpleThruster
 
+DEPLOY = True
+if DEPLOY:
+    from device.motion.pca9685 import PCA9685
+    from device.motion.blue_esc import BlueESC_PCA9685
 
-s = serial.Serial('/dev/tty.usbserial-A4006DBQ', 115200)
+CTRL_TIMEOUT = 1.000  # (sec) Timeout for thrusters based on last received controller message
 
-thr = [
-    SimpleThruster(Position(-0.1, -0.25, 0)),
-    SimpleThruster(Position(-0.4, -0.25, 0)),
-    SimpleThruster(Position(0.1, -0.25, 0)),
-    SimpleThruster(Position(0.4, -0.25, 0))
-]
+if DEPLOY:
+    PORT = '/dev/ttyUSB0'
+else:
+    PORT = '/dev/tty.usbserial-A4006DBQ'
+s = serial.Serial(PORT, 115200)
+
+
+if DEPLOY:
+    pca = PCA9685(0x40)
+    pca.set_pwm_freq(300)
+
+    thr = [
+        BlueESC_PCA9685(Position(-0.4, -0.25, 0), 3, pca)
+        , BlueESC_PCA9685(Position(-0.1, -0.25, 0), 2, pca)
+        , BlueESC_PCA9685(Position(0.1, -0.25, 0), 1, pca)
+        , BlueESC_PCA9685(Position(0.4, -0.25, 0), 0, pca)
+    ]
+else:
+    thr = [
+        SimpleThruster(Position(-0.4, -0.25, 0)),
+        SimpleThruster(Position(-0.1, -0.25, 0)),
+        SimpleThruster(Position(0.1, -0.25, 0)),
+        SimpleThruster(Position(0.4, -0.25, 0))
+    ]
 
 
 plat = Platform(thr)
-
-last_update = None
-last_mode = 0
 
 
 def interp_joy(v):
@@ -28,31 +48,46 @@ def interp_joy(v):
     return v
 
 
+last_update = None  # Time of last received update from controllers
+last_c_mode = 0  # Last controller thruster mode
+
+incoming_buf = b''  # Buffer to store received serial data
+
 while True:
-    raw = s.readline()
-    raw = raw[:-1]  # Remove last char (newline)
+    while s.in_waiting > 0:  # While bytes remain in serial stack
+        new = s.read()
+        if new == b'\n':  # Marks end of line -> try to decode
+            raw = incoming_buf
+            incoming_buf = b''
+            try:  # Ensure it doesn't crash on error
+                # Attempt to select from serial data
+                c_enable = raw[0]  # Controller thruster enable state
+                c_mode = raw[1]  # Controller thruster mode / layout
+                c_y = interp_joy(raw[2])  # Controller y-axis joystick
+                c_r = interp_joy(raw[3])  # Controller rotation joystick
+            except KeyError:
+                print("malformed serial data: ", raw)
+            else:
+                last_update = time.time()  # Set last update timer
 
-    try:
-        data = list(raw)
+                if not c_mode == last_c_mode:  # Handle changing thruster mode
+                    plat.disable_thrusters()  # Ensure thrusters are off to prevent one being left on
+                    last_c_mode = c_mode
+                    if c_mode == 0:
+                        plat.thrusters = thr
+                    elif c_mode == 1:
+                        plat.thrusters = thr[1:3]
+                    elif c_mode == 2:
+                        plat.thrusters = [thr[0], thr[3]]
 
-        # Attempt to pull from serial data
-        c_enab = raw[0]
-        c_mode = raw[1]
-        c_y = interp_joy(raw[2])
-        c_r = interp_joy(raw[3])
-    except KeyError:
-        print("malformed serial data: ", raw)
-    else:
-        # print(list(raw))
-        # print("y: {}; r: {}".format(c_y, c_r))
-        if not c_mode == last_mode:
-            last_mode = c_mode
-            if c_mode == 0:
-                plat.thrusters = thr
-            elif c_mode == 1:
-                plat.thrusters = thr[1:3]
-            elif c_mode == 2:
-                plat.thrusters = [thr[0], thr[3]]
+                if c_enable > 0:
+                    plat.set_thrust(0, c_y, c_r)  # Set new thrust
+                else:
+                    plat.disable_thrusters()
+        else:
+            incoming_buf += new
 
-        plat.set_thrust(0, c_y, c_r)
-        print(plat.last_thrust)
+    if last_update is None or time.time()-last_update > CTRL_TIMEOUT:
+        plat.disable_thrusters()
+    print(plat.last_thrust)
+    time.sleep(0.1)
