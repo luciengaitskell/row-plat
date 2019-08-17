@@ -3,7 +3,7 @@
 from comms.packet import Packet
 
 #from devices.rfm69 import RFM69
-
+from settings import VERB
 
 MSG_STORE_SIZE = 255
 
@@ -75,13 +75,13 @@ class CommsNode:
 
     def accept_bytes(self, raw_data: bytes):
         p = Packet.from_raw(raw_data)
-        print("RAW: ", p.to_raw)
-        print("LIST RAW: ", list(p.to_raw))
+        if VERB>2: print("RAW: ", p.to_raw)
+        if VERB>2: print("LIST RAW: ", list(p.to_raw))
 
         if self._curr_msg_id is None:  # New to connection, start at packet
             msg_id = self._curr_msg_id = p.id
-            print("PICKING UP AT ID: ", msg_id)
-            print("RAW: ", list(raw_data))
+            if VERB>0: print("PICKING UP AT ID: ", msg_id)
+            if VERB>1: print("RAW: ", list(raw_data))
         else:
             # CHECK Alignment:
             while True:
@@ -94,7 +94,7 @@ class CommsNode:
                     msg_id = self.next_msg_id
                     break
                 else:  # Much older packet -> discard
-                    print("Packet has used ID")
+                    if VERB>0: print("Packet has used ID")
                     return None
 
 
@@ -107,7 +107,7 @@ class CommsNode:
             try:  #TODO: TEMPORARY
                 self.msg_store[self._curr_msg_id] = msg
             except:
-                print("INDEX: ", self._curr_msg_id)
+                if VERB>0: print("INDEX: ", self._curr_msg_id)
                 raise
         else:
             msg = self.msg_store[self._curr_msg_id]
