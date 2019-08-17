@@ -1,42 +1,28 @@
 import time
+from machine import UART
 
+from settings import VERB
 from platform import Platform
+from comms.packet import Packet
 
-LOOP_PERIOD = 200
 
-
-plat = Platform('b')
+plat = Platform('b')  # Platform hardware setup
+serial = UART(1, rx=33, tx=15, baudrate=115200)  # Serial communication to host processor (RasPi)
 
 
 def main():
-    last_success = None
     try:
         plat.setup()
+
         while plat.running:
-            loop_start = time.ticks_ms()  # Loop timer
+            data = plat.radio.receive(timeout=1.0)  # Attempt wait for incoming packet
 
-            # Action:
-            data = plat.radio.receive(timeout=0.1)
-            # print(data)
-            if isinstance(data, bytearray):
-                print("\n")
-                pak = plat.c.accept_bytes(data)
-                print("RECEIVED (strength: {})".format(plat.radio.rssi))
-                print(pak)
-                last_success = time.ticks_ms()
-            else:
-                print("type: ", type(data))
-
-            if last_success is not None and time.ticks_diff(time.ticks_ms(), last_success) > 2000:
-                print("No Data")
-                last_success = None
-
-            # Handle loop sleep, based on elapsed time:
-            t_elapsed = time.ticks_diff(time.ticks_ms(), loop_start)
-            sleep = LOOP_PERIOD - t_elapsed
-            if sleep > 0:
-                time.sleep_ms(sleep)
-            else:
-                print("CLOCK STRETCHING ", sleep)
+            if data is not None:  # If packet received
+                # packet = plat.c.accept_bytes(data)  # UNSTABLE -- no msg id sync method in this situation (one way)
+                packet = Packet.from_raw(data)  # Interpret data into packet
+                if packet is not None:  # Check that packet was not ignored
+                    msg = packet.body
+                    serial.write(msg + '\n')  # Write to serial, with newline
+            if VERB>2: print(data)
     finally:
         plat.close()
