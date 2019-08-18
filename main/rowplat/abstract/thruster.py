@@ -21,6 +21,7 @@ class Thruster(metaclass=ABCMeta):
 
     @thrust.setter
     def thrust(self, thr):
+        self._thrust = thr
         self._set_power(self._conv_thrust(thr))
 
     @abstractmethod
