@@ -42,6 +42,12 @@ class BlueESC_PCA9685(Thruster):
 
     def _set_power(self, p: float):
         """ Set the power of the BlueESC (in the range of -1,1). """
+        # Clamp power to [-1, 1]:
+        if p > 1:
+            p = 1
+        if p < -1:
+            p = -1
+
         p_val = self.mid
         if p < 0:
             p_val = float(p) * (self.min_bck - self.full_bck) + self.min_bck
