@@ -13,7 +13,7 @@ if DEPLOY:
 CTRL_TIMEOUT = 1.000  # (sec) Timeout for thrusters based on last received controller message
 
 if DEPLOY:
-    PORT = '/dev/ttyUSB0'
+    PORT = '/dev/ttyUSB0'  # TODO: REVERT THIS
 else:
     PORT = '/dev/tty.usbserial-A4006DBQ'
 s = serial.Serial(PORT, 115200)
@@ -65,6 +65,8 @@ while True:
                 c_mode = raw[1]  # Controller thruster mode / layout
                 c_y = interp_joy(raw[2])  # Controller y-axis joystick
                 c_r = interp_joy(raw[3])  # Controller rotation joystick
+                c_g_y = raw[4]  # Controller y-axis gain
+                c_g_r = raw[5]  # Controller rotation gain
             except KeyError:
                 print("malformed serial data: ", raw)
             else:
@@ -79,9 +81,11 @@ while True:
                         plat.thrusters = thr[1:3]
                     elif c_mode == 2:
                         plat.thrusters = [thr[0], thr[3]]
+                    else:
+                        plat.thrusters = []
 
                 if c_enable > 0:
-                    plat.set_thrust(0, c_y, c_r)  # Set new thrust
+                    plat.set_thrust(0, c_y * c_g_y, c_r * c_g_r)  # Set new thrust
                 else:
                     plat.disable_thrusters()
         else:

@@ -43,9 +43,11 @@ last_success = None
 class Control:
     """ Control variables used to send to boat. """
     enable = False  # (bool) General lockout for motors
-    mode = 0  # (int) Drive mode/motor layout -- 0: all, 1: inner, 2: outer
+    mode = 0  # (int) Drive mode/motor layout -- 0: all, 1: inner, 2: outer, 3: gain edit
     y = 0  # (float) Y-axis control (throttle)
     r = 0  # (float) Rotational axis control
+    g_y = 1  # (int) Y-axis gain
+    g_r = 1  # (int) Rotational axis gain
 
     @staticmethod
     def _scale_joy(v):
@@ -63,33 +65,61 @@ class Control:
         y = cls._scale_joy(cls.y)
         r = cls._scale_joy(cls.r)
 
-        return bytes([enable, mode, y, r])
+        g_y = int(cls.g_y)
+        g_r = int(cls.g_r)
+
+        return bytes([enable, mode, y, r, g_y, g_r])
 
 
 # # INTERACTION
 def button_detect():
     # Throttle control
+    y_delta = 0  # Button change to y-axis control value
     if B_UP.update() and not B_UP.last:
-        Control.y += 0.1
+        y_delta += 1
     if B_DOWN.update() and not B_DOWN.last:
-        Control.y -= 0.1
-    if abs(Control.y) > 1.0:  # Clamp to [-1.0, 1.0]
-        Control.y = math.copysign(1.0, Control.y)
+        y_delta -= 1
 
     # Rotation control
+    r_delta = 0  # Button change to rotational control value
     if B_RIGHT.update() and not B_RIGHT.last:
-        Control.r += 0.1
+        r_delta += 1
     if B_LEFT.update() and not B_LEFT.last:
-        Control.r -= 0.1
+        r_delta -= 1
+
+    if Control.mode == 3:  # Detect for gain edit mode
+        # Ensure control at center:
+        Control.y = 0
+        Control.r = 0
+
+        Control.g_y += y_delta
+        Control.g_r += r_delta
+    else:
+        Control.y += y_delta * 0.1
+        Control.r += r_delta * 0.1
+
+    # Control clamping:
+    if abs(Control.y) > 1.0:  # Clamp to [-1.0, 1.0]
+        Control.y = math.copysign(1.0, Control.y)
     if abs(Control.r) > 1.0:  # Clamp to [-1.0, 1.0]
         Control.r = math.copysign(1.0, Control.r)
+
+    # Control gain clamping:
+    if Control.g_y < 1:
+        Control.g_y = 1
+    if Control.g_y > 9:
+        Control.g_y = 9
+    if Control.g_r < 1:
+        Control.g_r = 1
+    if Control.g_r > 9:
+        Control.g_r = 9
 
     Control.enable = not B_ENB.value()  # Enable switch (latching)
 
     # Mode switch:
     if B_ALT.update() and not B_ALT.last:
         Control.mode += 1
-        if Control.mode > 2:
+        if Control.mode > 3:
             Control.mode = 0
 
 
@@ -142,6 +172,8 @@ def update_display():
     if Control.mode == 0 or Control.mode == 2:  # inner (m4 and m1)
         plat.display.fill_rect(*M_DATA[0])
         plat.display.fill_rect(*M_DATA[3])
+    if Control.mode == 3:
+        plat.display.text("GAIN", 64, 56)
 
     # Cross point placement
     plat.display.rect(
@@ -155,6 +187,9 @@ def update_display():
     # Centered cross notice:
     if abs(Control.y) < 0.01 and abs(Control.r) < 0.01:
         plat.display.text("+", 0, 0)
+
+    # Control gain display:
+    plat.display.text("Y:{} R:{}".format(Control.g_y, Control.g_r), 72, 2)
 
     plat.display.show()  # PUSH to hardware
 
