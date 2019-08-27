@@ -1,0 +1,3 @@
+pyserial
+numpy
+pynmea2

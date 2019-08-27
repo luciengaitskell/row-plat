@@ -1,0 +1,14 @@
+# Python:
+*.pyc
+
+# JetBrains:
+.idea/
+
+# MicroPython compiled:
+*.mpy
+!abc.mpy
+
+# Project:
+settings.py
+debug.py
+dev/
