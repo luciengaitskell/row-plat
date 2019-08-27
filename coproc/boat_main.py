@@ -7,7 +7,7 @@ from comms.packet import Packet
 from comms import nmea
 
 
-plat = Platform('b')  # Platform hardware setup
+plat = Platform('b', gps=True)  # Platform hardware setup
 serial = UART(1, rx=33, tx=15, baudrate=115200)  # Serial communication to host processor (RasPi)
 
 
@@ -44,6 +44,12 @@ def main():
                     else:
                         msg = nmea.Control(c_enable, c_mode, c_y, c_r, c_g_y, c_g_r)
                         serial.write(msg.render())  # Write to serial, with carriage return and newline
+
             if VERB>2: print(data)
+
+            # Send all new GNS data over serial:
+            gns_data = plat.gns.read_all_data()
+            for d in gns_data:  # Iterate new data
+                serial.write(d + b'\r\n')  # Write with line endings
     finally:
         plat.close()

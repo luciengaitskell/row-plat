@@ -5,10 +5,11 @@ import random
 from comms.comms import CommsNode
 from devices.rfm69 import RFM69
 from devices.ssd1306 import SSD1306_I2C
+from devices.xa1110 import XA1110
 
 
 class Platform:
-    def __init__(self, id: str, display: bool=True):
+    def __init__(self, id: str, display: bool=True, gps: bool=False):
         """ Create platform object. """
 
         self.running = False  # Status of platform. Used for concurrent threads
@@ -34,13 +35,14 @@ class Platform:
         """ Wrappers/Supporting Classes """
         self.c = CommsNode(id, None)  # Handles messaging over radio
 
-        '''
-        gns = XA1110(i2c=i2c_bus)
-        gns.write(b'PMTK314,0,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,1,0')
-        gns.read_all_data()  # Clear buffer so that we know that data that followings is current
-        gns_data = MicropyGPS(location_formatting='dd')
+        if gps:
+            self.gns = XA1110(i2c=self.i2c_bus)
+            self.gns.write(b'PMTK314,0,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,1,0')
+            self.gns.read_all_data()  # Clear buffer so that we know that data that followings is current
+            self.gns.read_all_data()
+            #self.gns_data = MicropyGPS(location_formatting='dd')
 
-        imu = bno055.BNO055(i2c_bus)'''
+        #imu = bno055.BNO055(i2c_bus)
 
     def setup(self):
         self.radio.init(915.0)
