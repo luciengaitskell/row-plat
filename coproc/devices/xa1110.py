@@ -7,6 +7,8 @@ xa1110.py
 
 from machine import I2C, Pin
 
+from comms.verif import checksum
+
 LEN = 225
 
 
@@ -57,29 +59,6 @@ class XA1110:
 
         return data
 
-    @staticmethod
-    def _checksum(cstring, hex_str=True):
-        """
-        Generate checksum for command string.
-
-        :param cstring: str
-            Input command string
-        :param hex_str: str (default=True)
-            Enable return as byte string of checksum in hexadecimal, without the leading '0x'
-        """
-        t = 0
-
-        for i in range(0, len(cstring)):
-            t = t ^ cstring[i]
-
-        # "{0:#0{1}x}".format(42,6) - see https://stackoverflow.com/questions/12638408/decorating-hex-function-to-pad-zeros
-
-        if hex_str:
-            # return hex(t).strip('0x').upper().encode('ascii') # This argument provides no leading 0, so not suitable
-            return "{:0>2X}".format(t).encode('ascii') # Ensures leading 0 in hex, two characters
-
-        return t
-
     @classmethod
     def _format_string(cls, cmd: bytes) -> bytes:
         """
@@ -92,7 +71,7 @@ class XA1110:
         # Change - Want to send commands other than PMTK so don't make this default
         # cmd = b"PMTK" + cmd  # if only PMTK instructions are being issued
 
-        csum = cls._checksum(cmd)
+        csum = checksum(cmd)
         return b"$" + cmd + b"*" + csum + b"\r\n"
 
     def write(self, cmd: bytes):
