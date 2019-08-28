@@ -6,6 +6,15 @@ from comms import nmea
 from rowplat.motion.platform import Platform
 from rowplat.motion.position import Position
 from sim.impl.simplethruster import SimpleThruster
+from store import util as store_util
+from store.db import Database
+
+
+SESSION_NAME = store_util.gen_name()  # Gen session ID/name
+print("BEGIN Session ID: {}".format(SESSION_NAME))
+DB_PATH = store_util.gen_storage_path(SESSION_NAME)  # Get full path for storage
+print("Save data under: {}".format(DB_PATH))
+DB = Database(DB_PATH)  # Database accessor object
 
 DEPLOY = True
 if DEPLOY:
@@ -88,6 +97,24 @@ while True:
                         plat.set_thrust(0, c_y * c_g_y, c_r * c_g_r)  # Set new thrust
                     else:
                         plat.disable_thrusters()
+                elif isinstance(nmea_sentence, nmea.pynmea2.GGA):  # Log fix information
+                    ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#GGA '''
+                    DB.log({
+                        'gps_ts': nmea_sentence.timestamp.strftime("%H%M%S.%f"),
+                        'lat': nmea_sentence.latitude,
+                        'lon': nmea_sentence.longitude,
+                        'fix': nmea_sentence.gps_qual,
+                        'sat': nmea_sentence.num_sats,
+                    }, mtype='GGA')
+                    print("GGA")
+                elif isinstance(nmea_sentence, nmea.pynmea2.VTG):  # Log velocity vector information
+                    ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#VTG '''
+                    DB.log({
+                        'true_track': nmea_sentence.true_track,
+                        'mag_track': nmea_sentence.mag_track,
+                        'spd': nmea_sentence.spd_over_grnd_kmph,
+                    }, mtype='VTG')
+                    print("VTG")
         else:
             incoming_buf += new
 
