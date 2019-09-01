@@ -52,73 +52,78 @@ else:
 plat = Platform(thr)
 
 
-last_update = None  # Time of last received update from controllers
-last_c_mode = 0  # Last controller thruster mode
+def main():
+    last_update = None  # Time of last received update from controllers
+    last_c_mode = 0  # Last controller thruster mode
 
-incoming_buf = b''  # Buffer to store received serial data
+    incoming_buf = b''  # Buffer to store received serial data
 
-while True:
-    while s.in_waiting > 0:  # While bytes remain in serial stack
-        new = s.read()
-        if new == b'\n':  # Marks end of line -> try to decode
-            incoming_buf += new
-            raw = incoming_buf
-            incoming_buf = b''
+    while True:
+        while s.in_waiting > 0:  # While bytes remain in serial stack
+            new = s.read()
+            if new == b'\n':  # Marks end of line -> try to decode
+                incoming_buf += new
+                raw = incoming_buf
+                incoming_buf = b''
 
-            try:  # Ensure it doesn't crash on error
-                nmea_sentence = pynmea2.parse(raw.decode('ascii'))
-            except ValueError:
-                print("unknown data: ", raw)
-            else:
-                if isinstance(nmea_sentence, nmea.CTL):
-                    # Attempt to select from serial data
-                    c_enable = nmea_sentence.enable  # Controller thruster enable state
-                    c_mode = nmea_sentence.mode  # Controller thruster mode / layout
-                    c_y = nmea_sentence.control_y  # Controller y-axis joystick
-                    c_r = nmea_sentence.control_r  # Controller rotation joystick
-                    c_g_y = nmea_sentence.gain_y  # Controller y-axis gain
-                    c_g_r = nmea_sentence.gain_r  # Controller rotation gain
+                try:  # Ensure it doesn't crash on error
+                    nmea_sentence = pynmea2.parse(raw.decode('ascii'))
+                except ValueError:
+                    print("unknown data: ", raw)
+                else:
+                    if isinstance(nmea_sentence, nmea.CTL):
+                        # Attempt to select from serial data
+                        c_enable = nmea_sentence.enable  # Controller thruster enable state
+                        c_mode = nmea_sentence.mode  # Controller thruster mode / layout
+                        c_y = nmea_sentence.control_y  # Controller y-axis joystick
+                        c_r = nmea_sentence.control_r  # Controller rotation joystick
+                        c_g_y = nmea_sentence.gain_y  # Controller y-axis gain
+                        c_g_r = nmea_sentence.gain_r  # Controller rotation gain
 
-                    last_update = time.time()  # Set last update timer
+                        last_update = time.time()  # Set last update timer
 
-                    if not c_mode == last_c_mode:  # Handle changing thruster mode
-                        plat.disable_thrusters()  # Ensure thrusters are off to prevent one being left on
-                        last_c_mode = c_mode
-                        if c_mode == 0:
-                            plat.thrusters = thr
-                        elif c_mode == 1:
-                            plat.thrusters = thr[1:3]
-                        elif c_mode == 2:
-                            plat.thrusters = [thr[0], thr[3]]
+                        if not c_mode == last_c_mode:  # Handle changing thruster mode
+                            plat.disable_thrusters()  # Ensure thrusters are off to prevent one being left on
+                            last_c_mode = c_mode
+                            if c_mode == 0:
+                                plat.thrusters = thr
+                            elif c_mode == 1:
+                                plat.thrusters = thr[1:3]
+                            elif c_mode == 2:
+                                plat.thrusters = [thr[0], thr[3]]
+                            else:
+                                plat.thrusters = []
+
+                        if c_enable:
+                            plat.set_thrust(0, c_y * c_g_y, c_r * c_g_r)  # Set new thrust
                         else:
-                            plat.thrusters = []
+                            plat.disable_thrusters()
+                    elif isinstance(nmea_sentence, nmea.pynmea2.GGA):  # Log fix information
+                        ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#GGA '''
+                        DB.log({
+                            'gps_ts': nmea_sentence.timestamp.strftime("%H%M%S.%f"),
+                            'lat': nmea_sentence.latitude,
+                            'lon': nmea_sentence.longitude,
+                            'fix': nmea_sentence.gps_qual,
+                            'sat': nmea_sentence.num_sats,
+                        }, mtype='GGA')
+                        print("GGA")
+                    elif isinstance(nmea_sentence, nmea.pynmea2.VTG):  # Log velocity vector information
+                        ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#VTG '''
+                        DB.log({
+                            'true_track': nmea_sentence.true_track,
+                            'mag_track': nmea_sentence.mag_track,
+                            'spd': nmea_sentence.spd_over_grnd_kmph,
+                        }, mtype='VTG')
+                        print("VTG")
+            else:
+                incoming_buf += new
 
-                    if c_enable:
-                        plat.set_thrust(0, c_y * c_g_y, c_r * c_g_r)  # Set new thrust
-                    else:
-                        plat.disable_thrusters()
-                elif isinstance(nmea_sentence, nmea.pynmea2.GGA):  # Log fix information
-                    ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#GGA '''
-                    DB.log({
-                        'gps_ts': nmea_sentence.timestamp.strftime("%H%M%S.%f"),
-                        'lat': nmea_sentence.latitude,
-                        'lon': nmea_sentence.longitude,
-                        'fix': nmea_sentence.gps_qual,
-                        'sat': nmea_sentence.num_sats,
-                    }, mtype='GGA')
-                    print("GGA")
-                elif isinstance(nmea_sentence, nmea.pynmea2.VTG):  # Log velocity vector information
-                    ''' NMEA https://www.gpsinformation.org/dale/nmea.htm#VTG '''
-                    DB.log({
-                        'true_track': nmea_sentence.true_track,
-                        'mag_track': nmea_sentence.mag_track,
-                        'spd': nmea_sentence.spd_over_grnd_kmph,
-                    }, mtype='VTG')
-                    print("VTG")
-        else:
-            incoming_buf += new
+        if last_update is None or time.time()-last_update > CTRL_TIMEOUT:
+            plat.disable_thrusters()
+        print(plat.last_thrust)
+        time.sleep(0.1)
 
-    if last_update is None or time.time()-last_update > CTRL_TIMEOUT:
-        plat.disable_thrusters()
-    print(plat.last_thrust)
-    time.sleep(0.1)
+
+if __name__ == '__main__':
+    main()
