@@ -9,6 +9,7 @@ from ..abstract.thruster import Thruster
 
 class Platform:
     def __init__(self, thrusters: List[Thruster]):
+        self.running = False
         self.coeff = None
         self.coeff_inv = None
 

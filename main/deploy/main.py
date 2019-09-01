@@ -1,7 +1,11 @@
-import pynmea2
 import serial
 import time
+from threading import Thread
 
+import pynmea2
+import RPi.GPIO as GPIO  # import GPIO
+
+from device.sense.hx711 import HX711  # import the class HX711 (local)
 from comms import nmea
 from rowplat.motion.platform import Platform
 from rowplat.motion.position import Position
@@ -52,11 +56,41 @@ else:
 plat = Platform(thr)
 
 
+GPIO.setmode(GPIO.BCM)  # set GPIO pin mode to BCM numbering
+hx = HX711(dout_pin=5, pd_sck_pin=6)
+print("Reset")
+result = hx.reset()  # Before we start, reset the hx711 ( not necessary)
+if result:  # you can check if the reset was successful
+    print('Ready to use')
+else:
+    print('not ready')
+
+
+last_hx_value = None  # Shared strain value (between threads)
+thread_hx = None  # Thread object for strain reading
+
+
+def op_hx_read():
+    """ Thread target for updating strain readings. """
+    global last_hx_value
+    NUM_READINGS = 25  # Number of readings to take and average over
+    while plat.running:
+        last_hx_value = hx.get_raw_data_mean(NUM_READINGS)
+        time.sleep(0.1)
+
+
 def main():
     last_update = None  # Time of last received update from controllers
     last_c_mode = 0  # Last controller thruster mode
 
     incoming_buf = b''  # Buffer to store received serial data
+
+
+    # Strain reading thread setup:
+    plat.running = True
+    global thread_hx, last_hx_value
+    thread_hx = Thread(target=op_hx_read, name="HX_READ")
+    thread_hx.start()
 
     while True:
         while s.in_waiting > 0:  # While bytes remain in serial stack
@@ -122,8 +156,20 @@ def main():
         if last_update is None or time.time()-last_update > CTRL_TIMEOUT:
             plat.disable_thrusters()
         print(plat.last_thrust)
+
+        if last_hx_value is not None:  # Check for new strain value
+            DB.log({
+                'val': last_hx_value
+            }, mtype='STRAIN')  # Log it
+            print("STRAIN")  # Report new strain value
+            last_hx_value = None  # Reset shared var
+
         time.sleep(0.1)
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    finally:
+        plat.running = False
+        thread_hx.join()
