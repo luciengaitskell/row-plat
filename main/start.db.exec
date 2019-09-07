@@ -1,0 +1,3 @@
+#!/bin/bash
+# Run db script within detached screen with name 'rowdb'
+screen -dmS rowdb ./script/setup.db.exec

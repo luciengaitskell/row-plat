@@ -1,0 +1,3 @@
+#!/bin/bash
+# Run mongodb, with bash afterwards to preserve window
+mongod --dbpath=/home/pi/row-plat/data  && bash

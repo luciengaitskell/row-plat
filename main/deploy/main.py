@@ -16,9 +16,9 @@ from store.db import Database
 
 SESSION_NAME = store_util.gen_name()  # Gen session ID/name
 print("BEGIN Session ID: {}".format(SESSION_NAME))
-DB_PATH = store_util.gen_storage_path(SESSION_NAME)  # Get full path for storage
-print("Save data under: {}".format(DB_PATH))
-DB = Database(DB_PATH)  # Database accessor object
+#DB_PATH = store_util.gen_storage_path(SESSION_NAME)  # Get full path for storage
+#print("Save data under: {}".format(DB_PATH))
+DB = Database(SESSION_NAME)  # Database accessor object
 
 DEPLOY = True
 if DEPLOY:

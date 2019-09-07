@@ -1,4 +1,6 @@
 pyserial
 numpy
 pynmea2
-tinydb
+
+# PyMongo, with support for Raspi server [https://stackoverflow.com/a/51407531]
+pymongo==3.4.0
