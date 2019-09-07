@@ -173,3 +173,5 @@ if __name__ == '__main__':
     finally:
         plat.running = False
         thread_hx.join()
+        DB.close()
+        GPIO.cleanup()
