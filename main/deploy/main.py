@@ -73,10 +73,10 @@ thread_hx = None  # Thread object for strain reading
 def op_hx_read():
     """ Thread target for updating strain readings. """
     global last_hx_value
-    NUM_READINGS = 25  # Number of readings to take and average over
+    NUM_READINGS = 16  # Number of readings to take and average over
     while plat.running:
         last_hx_value = hx.get_raw_data_mean(NUM_READINGS)
-        time.sleep(0.1)
+        #time.sleep(0.1)
 
 
 def main():
@@ -155,7 +155,7 @@ def main():
 
         if last_update is None or time.time()-last_update > CTRL_TIMEOUT:
             plat.disable_thrusters()
-        print(plat.last_thrust)
+        #print(plat.last_thrust)
 
         if last_hx_value is not None:  # Check for new strain value
             DB.log({
@@ -164,7 +164,7 @@ def main():
             print("STRAIN")  # Report new strain value
             last_hx_value = None  # Reset shared var
 
-        time.sleep(0.1)
+        time.sleep(0.001)
 
 
 if __name__ == '__main__':
